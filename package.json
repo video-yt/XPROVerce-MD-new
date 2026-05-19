@@ -15,7 +15,7 @@
     "@hapi/boom": "^10.0.1",
     "@xaviabot/fb-downloader": "^1.0.14",
     "adm-zip": "0.5.16",
-    "anju-xpro-baileys": "github:dlcine450/rcx",
+    "anju-xpro-baileys": "npm:xprov2baileystest",
     "api-dylux": "1.8.5",
     "aptoide-scraper": "1.0.1",
     "axios": "^1.2.5",
