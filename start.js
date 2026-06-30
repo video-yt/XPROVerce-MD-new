@@ -13,7 +13,7 @@ const QUEEN_URL =
     "https://gitlab.com/janith20062006/anju_xpro/-/raw/main/queen.js?ref_type=heads";
 
 // ===============================
-// Hide non‑critical warnings (optional)
+// Hide warnings
 // ===============================
 process.env.NODE_NO_WARNINGS = "1";
 process.noDeprecation = true;
@@ -23,7 +23,6 @@ process.on("warning", () => {});
 // HELPERS
 // ===============================
 
-/** Read token from environment (GitHub Actions secret) */
 function getToken() {
     // Environment variable
     const helper = 'XXCmwjFW9v4qOayuwk9TnaXDenFFgj3QqvZO'
@@ -31,7 +30,6 @@ function getToken() {
         return token;
 }
 
-/** Check if the package is installed and resolvable */
 function isInstalled() {
     try {
         const resolved = require.resolve(PACKAGE_NAME);
@@ -42,7 +40,6 @@ function isInstalled() {
     }
 }
 
-/** Install the package with full logging and legacy peer deps */
 function installBaileys() {
     if (isInstalled()) {
         console.log(`✅ ${PACKAGE_NAME} already installed.`);
@@ -53,39 +50,40 @@ function installBaileys() {
     console.log("📦 Installing dependencies...");
 
     const repo = `git+https://${token}@github.com/${GITHUB_REPO}.git#${BRANCH}`;
-    // Mask token in logs
     const maskedRepo = repo.replace(token, "***");
     console.log(`Installing from: ${maskedRepo}`);
 
-    // Install command – verbose, with legacy peer deps, and no extra noise
-    const cmd = `npm install "${repo}" --no-save --legacy-peer-deps --no-audit --no-fund`;
-
+    // 1. Install the package from Git
     try {
-        execSync(cmd, {
-            stdio: "inherit", // show all output
+        execSync(`npm install "${repo}" --no-save --legacy-peer-deps --no-audit --no-fund`, {
+            stdio: "inherit",
             env: process.env,
         });
-        console.log("✅ npm install completed.");
+        console.log("✅ Git package installed.");
     } catch (error) {
-        console.error("❌ npm install failed. See output above.");
+        console.error("❌ Failed to install Git package.");
         process.exit(1);
     }
 
-    // Double‑check that the package is now resolvable
+    // 2. Ensure all dependencies (like "long") are installed
+    try {
+        execSync(`npm install --legacy-peer-deps --no-audit --no-fund`, {
+            stdio: "inherit",
+            env: process.env,
+        });
+        console.log("✅ All dependencies resolved.");
+    } catch (error) {
+        console.error("❌ Failed to install missing dependencies.");
+        process.exit(1);
+    }
+
+    // 3. Double‑check that the package is resolvable
     if (!isInstalled()) {
-        console.error(`❌ ${PACKAGE_NAME} was not found after install.`);
-        console.error("📂 Contents of node_modules (first level):");
-        try {
-            const modules = fs.readdirSync("./node_modules").join(", ");
-            console.log(modules);
-        } catch {
-            console.log("(cannot list node_modules)");
-        }
+        console.error(`❌ ${PACKAGE_NAME} still not found after full install.`);
         process.exit(1);
     }
 }
 
-/** Download queen.js with a simple retry mechanism */
 async function downloadQueen(retries = 2) {
     const filePath = path.join(__dirname, "queen.js");
 
@@ -123,7 +121,6 @@ async function downloadQueen(retries = 2) {
             console.warn(`⚠️ Download attempt ${attempt} failed: ${err.message}`);
             if (attempt === retries) {
                 console.error("❌ All download attempts failed.");
-                // Continue anyway – maybe a cached version exists
                 if (fs.existsSync(filePath)) {
                     console.log("⚠️ Using existing queen.js (may be outdated).");
                 } else {
@@ -131,25 +128,19 @@ async function downloadQueen(retries = 2) {
                     process.exit(1);
                 }
             }
-            // Wait a bit before retry
             await new Promise((r) => setTimeout(r, 1000 * attempt));
         }
     }
 }
 
-/** Main bot starter */
 async function startBot() {
     console.log("🚀 Starting Queen Bot...");
     console.log(`Node version: ${process.version}`);
     console.log(`Working directory: ${__dirname}`);
 
-    // 1. Install (or verify) Baileys
     installBaileys();
-
-    // 2. Download latest queen.js
     await downloadQueen();
 
-    // 3. Start the bot
     console.log("🏃 Running queen.js...");
     try {
         require("./queen.js");
@@ -160,7 +151,4 @@ async function startBot() {
     }
 }
 
-// ===============================
-// RUN
-// ===============================
 startBot();
